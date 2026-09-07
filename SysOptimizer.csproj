@@ -6,14 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>SysOptimizer</RootNamespace>
-    <!-- WMI (System.Management) only works on Windows -->
+    <!-- wmi (System.Management) only works on windows -->
     <UseWindowsForms>false</UseWindowsForms>
+    <!-- turning this on so the approval step can be a real window instead of console text -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>

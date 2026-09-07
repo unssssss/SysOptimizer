@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using SysOptimizer.Models;
@@ -30,13 +31,18 @@ public class GeminiApiClient
 
     /// <summary>
     /// mode a: send the scan data over and get back a list of recommendations.
-    /// nothing runs yet at this point, it's just the model's opinion on the scan
+    /// nothing runs yet at this point, it's just the model's opinion on the scan.
+    /// contextNote is optional extra framing — used for stuff like the reproduce-and-capture
+    /// mode where we're sending a focused event window instead of a full system scan
     /// </summary>
-    public async Task<AnalysisResponse> RequestAnalysisAsync(string scanDataJson)
+    public async Task<AnalysisResponse> RequestAnalysisAsync(string scanDataJson, string? contextNote = null)
     {
+        string intro = string.IsNullOrWhiteSpace(contextNote)
+            ? "Here is the current system scan data (JSON)."
+            : contextNote;
+
         string userMessage =
-            "Here is the current system scan data (JSON). Analyze it per your instructions and " +
-            "return ONLY the analysis JSON object.\n\n" + scanDataJson;
+            intro + " Analyze it per your instructions and return ONLY the analysis JSON object.\n\n" + scanDataJson;
 
         string rawJson = await SendMessageAsync(userMessage);
         return DeserializeStrict<AnalysisResponse>(rawJson);
@@ -102,15 +108,44 @@ public class GeminiApiClient
         };
 
         string bodyJson = JsonSerializer.Serialize(requestBody);
-        using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-
         string url = $"{BaseUrl}/{_model}:generateContent?key={_apiKey}";
-        using var response = await _http.PostAsync(url, content);
-        string responseBody = await response.Content.ReadAsStringAsync();
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"Gemini API error {(int)response.StatusCode}: {responseBody}");
+        // google's free tier gets 503 "high demand" errors pretty often, especially
+        // during peak hours. it's almost always fine a few seconds later, so retry
+        // a couple times with a growing delay before actually giving up
+        const int maxAttempts = 4;
+        HttpRequestException? lastTransientError = null;
 
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+            using var response = await _http.PostAsync(url, content);
+            string responseBody = await response.Content.ReadAsStringAsync();
+
+            bool isTransient = (int)response.StatusCode == 503 || (int)response.StatusCode == 429;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (isTransient && attempt < maxAttempts)
+                {
+                    lastTransientError = new HttpRequestException($"Gemini API error {(int)response.StatusCode}: {responseBody}");
+                    int delaySeconds = attempt * 3; // 3s, 6s, 9s
+                    Console.WriteLine($"gemini is overloaded (attempt {attempt}/{maxAttempts}), retrying in {delaySeconds}s...");
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                    continue;
+                }
+                throw new HttpRequestException($"Gemini API error {(int)response.StatusCode}: {responseBody}");
+            }
+
+            return ParseResponseText(responseBody);
+        }
+
+        // shouldn't really get here, but just in case the loop falls through
+        throw lastTransientError ?? new HttpRequestException("Gemini API request failed after retries.");
+    }
+
+    private static string ParseResponseText(string responseBody)
+    {
         using var doc = JsonDocument.Parse(responseBody);
 
         // sometimes gemini blocks a response (safety filters, hit max tokens with nothing
