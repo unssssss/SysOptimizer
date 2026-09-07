@@ -14,8 +14,6 @@ that felt like the important rule to not break while building this.
 
 ## setup
 
-click the green "code" button on github and download the zip and extract all.
-
 1. get a free key at https://aistudio.google.com/apikey (sign in with google, click
    "create api key"). if it says "no cloud projects available," you might need to make
    a project first at console.cloud.google.com/projectcreate, then go back and try again.
