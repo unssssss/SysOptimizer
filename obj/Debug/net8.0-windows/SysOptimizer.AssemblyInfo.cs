@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SysOptimizer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+37b9d24cedd63878c234f984def6f79440176d9c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c16282027136563d4c07042a3656499d074ba3b7")]
 [assembly: System.Reflection.AssemblyProductAttribute("SysOptimizer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SysOptimizer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
